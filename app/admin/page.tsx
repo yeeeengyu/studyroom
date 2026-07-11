@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { FilePenLine, ImagePlus, Music, Sparkles, Trash2 } from "lucide-react";
+import { SpotifyMarkdownParagraph } from "@/components/SpotifyMarkdownParagraph";
 import { apiDelete, apiGet, apiPost, apiPut, assetUrl } from "@/lib/api";
 import { createSpotifyDirective } from "@/lib/spotify";
 import type { Category, PostDetail, PostSummary } from "@/lib/types";
@@ -260,7 +261,16 @@ export default function AdminPage() {
         {draft.thumbnailUrl && <img className="thumb-preview" src={assetUrl(draft.thumbnailUrl)} alt="썸네일 미리보기" />}
 
         <div data-color-mode="light" className="markdown-editor-wrap">
-          <MDEditor value={draft.content} onChange={(value) => setDraft({ ...draft, content: value || "" })} height={430} />
+          <MDEditor
+            value={draft.content}
+            onChange={(value) => setDraft({ ...draft, content: value || "" })}
+            height={430}
+            previewOptions={{
+              components: {
+                p: SpotifyMarkdownParagraph,
+              },
+            }}
+          />
         </div>
 
         {status && <p className="form-status">{status}</p>}

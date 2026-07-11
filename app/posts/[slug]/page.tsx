@@ -1,31 +1,13 @@
 "use client";
 
-import { Children, FormEvent, ReactNode, isValidElement, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Eye, MessageSquare, Trash2 } from "lucide-react";
-import { SpotifyEmbed } from "@/components/SpotifyEmbed";
+import { SpotifyMarkdownParagraph } from "@/components/SpotifyMarkdownParagraph";
 import { apiDelete, apiGet, apiPost, assetUrl } from "@/lib/api";
-import { parseSpotifyDirective, parseSpotifyUrl } from "@/lib/spotify";
-import type { SpotifyEmbed as SpotifyEmbedData } from "@/lib/spotify";
 import type { Comment, PostDetail } from "@/lib/types";
-
-function getSpotifyEmbedFromParagraph(children: ReactNode): SpotifyEmbedData | null {
-  const childItems = Children.toArray(children);
-  if (childItems.length !== 1) return null;
-
-  const child = childItems[0];
-  if (typeof child === "string") {
-    return parseSpotifyDirective(child) ?? parseSpotifyUrl(child);
-  }
-
-  if (isValidElement<{ href?: string }>(child) && child.props.href) {
-    return parseSpotifyUrl(child.props.href);
-  }
-
-  return null;
-}
 
 export default function PostDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -95,10 +77,7 @@ export default function PostDetailPage() {
           remarkPlugins={[remarkGfm]}
           components={{
             img: ({ src = "", alt = "" }) => <img src={assetUrl(String(src))} alt={String(alt)} />,
-            p: ({ children }) => {
-              const embed = getSpotifyEmbedFromParagraph(children);
-              return embed ? <SpotifyEmbed embed={embed} /> : <p>{children}</p>;
-            },
+            p: SpotifyMarkdownParagraph,
           }}
         >
           {post.content}

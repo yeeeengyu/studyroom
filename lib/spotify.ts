@@ -9,7 +9,7 @@ export type SpotifyEmbed = {
   embedUrl: string;
 };
 
-const SPOTIFY_DIRECTIVE_PATTERN = /^::spotify\[(.+)\]$/i;
+const SPOTIFY_DIRECTIVE_PATTERN = /^:{1,2}spotify\[(.+)\]$/i;
 
 function isSpotifyKind(value: string): value is SpotifyKind {
   return SPOTIFY_KINDS.includes(value.toLowerCase() as SpotifyKind);
