@@ -1,14 +1,24 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+const LOCAL_API_BASE = "http://localhost:8000";
+const PRODUCTION_API_BASE = "https://blog-api.ingyuc.click";
+const PRODUCTION_FRONTEND_HOSTS = new Set(["blog.ingyc.click", "blog.ingyuc.click"]);
+
+function apiBaseUrl() {
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "");
+  if (typeof window !== "undefined" && PRODUCTION_FRONTEND_HOSTS.has(window.location.hostname)) {
+    if (!configured || configured.includes("localhost")) return PRODUCTION_API_BASE;
+  }
+  return configured || LOCAL_API_BASE;
+}
 
 export function assetUrl(path: string) {
   if (!path) return "";
   if (path.startsWith("http://") || path.startsWith("https://") || path.startsWith("data:")) return path;
-  return `${API_BASE}${path}`;
+  return `${apiBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const isFormData = init.body instanceof FormData;
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(`${apiBaseUrl()}${path}`, {
     ...init,
     credentials: "include",
     headers: {
