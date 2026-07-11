@@ -4,7 +4,6 @@ import { FormEvent, useState } from "react";
 import { apiPost } from "@/lib/api";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -14,10 +13,10 @@ export default function LoginPage() {
     setError("");
     setSubmitting(true);
     try {
-      await apiPost("/api/auth/login", { username, password });
+      await apiPost("/api/auth/login", { password });
       window.location.href = "/admin";
     } catch {
-      setError("아이디 또는 비밀번호를 확인해주세요.");
+      setError("비밀번호를 확인해주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -26,10 +25,6 @@ export default function LoginPage() {
   return (
     <section className="auth-shell">
       <form className="auth-panel" onSubmit={handleSubmit}>
-        <label>
-          아이디
-          <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" />
-        </label>
         <label>
           비밀번호
           <input

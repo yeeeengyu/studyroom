@@ -12,6 +12,7 @@ from app.config import Settings, get_settings
 
 SESSION_COOKIE = "studyroom_session"
 SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 14
+SESSION_SUBJECT = "admin"
 
 
 def hash_password(password: str, iterations: int = 260_000) -> str:
@@ -37,8 +38,8 @@ def _serializer(settings: Settings) -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(settings.session_secret, salt="studyroom-admin")
 
 
-def issue_session(response: Response, username: str, settings: Settings) -> None:
-    token = _serializer(settings).dumps({"sub": username, "iat": datetime.now(timezone.utc).isoformat()})
+def issue_session(response: Response, settings: Settings) -> None:
+    token = _serializer(settings).dumps({"sub": SESSION_SUBJECT, "iat": datetime.now(timezone.utc).isoformat()})
     response.set_cookie(
         SESSION_COOKIE,
         token,
@@ -66,7 +67,7 @@ def require_admin(request: Request, settings: Settings = Depends(get_settings)) 
         payload = _serializer(settings).loads(token, max_age=SESSION_MAX_AGE_SECONDS)
     except (BadSignature, SignatureExpired):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="세션이 만료되었습니다.") from None
-    username = payload.get("sub")
-    if username != settings.admin_username:
+    subject = payload.get("sub")
+    if subject != SESSION_SUBJECT:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="세션이 올바르지 않습니다.")
-    return username
+    return subject

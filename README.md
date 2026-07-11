@@ -16,7 +16,6 @@ npm run dev
 
 ## 로그인
 
-- 아이디: `chldlsrb08`
 - 비밀번호는 원문을 코드에 저장하지 않고 `backend/.env`의 PBKDF2 해시로 검증합니다.
 
 비밀번호를 바꾸려면:

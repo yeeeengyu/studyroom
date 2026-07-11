@@ -29,7 +29,6 @@ def _env_bool(name: str, default: bool) -> bool:
 
 
 class Settings:
-    admin_username: str = os.getenv("ADMIN_USERNAME", "chldlsrb08")
     admin_password_hash: str = os.getenv("ADMIN_PASSWORD_HASH", "")
     session_secret: str = os.getenv("SESSION_SECRET", "dev-session-secret")
     frontend_origin: str = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")

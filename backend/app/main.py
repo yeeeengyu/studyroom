@@ -50,10 +50,10 @@ def health() -> dict[str, str]:
 
 @app.post("/api/auth/login")
 def login(payload: LoginRequest, response: Response) -> dict[str, str]:
-    if payload.username != settings.admin_username or not verify_password(payload.password, settings.admin_password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="아이디 또는 비밀번호가 올바르지 않습니다.")
-    issue_session(response, payload.username, settings)
-    return {"username": payload.username}
+    if not verify_password(payload.password, settings.admin_password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="비밀번호가 올바르지 않습니다.")
+    issue_session(response, settings)
+    return {"role": "admin"}
 
 
 @app.post("/api/auth/logout")
@@ -63,8 +63,8 @@ def logout(response: Response) -> dict[str, bool]:
 
 
 @app.get("/api/auth/me")
-def me(username: str = Depends(require_admin)) -> dict[str, str]:
-    return {"username": username}
+def me(subject: str = Depends(require_admin)) -> dict[str, str]:
+    return {"role": subject}
 
 
 @app.get("/api/categories")
