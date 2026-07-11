@@ -2,8 +2,9 @@
 
 import dynamic from "next/dynamic";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
-import { FilePenLine, ImagePlus, Sparkles, Trash2 } from "lucide-react";
+import { FilePenLine, ImagePlus, Music, Sparkles, Trash2 } from "lucide-react";
 import { apiDelete, apiGet, apiPost, apiPut, assetUrl } from "@/lib/api";
+import { createSpotifyDirective } from "@/lib/spotify";
 import type { Category, PostDetail, PostSummary } from "@/lib/types";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
@@ -32,6 +33,9 @@ export default function AdminPage() {
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [status, setStatus] = useState("");
+  const [spotifyPanelOpen, setSpotifyPanelOpen] = useState(false);
+  const [spotifyUrl, setSpotifyUrl] = useState("");
+  const [spotifyStatus, setSpotifyStatus] = useState("");
 
   const selectedPostTitle = useMemo(
     () => posts.find((post) => post.slug === editingSlug)?.title,
@@ -140,6 +144,26 @@ export default function AdminPage() {
     setStatus("요약이 생성되었습니다.");
   }
 
+  function insertSpotifyBlock() {
+    const directive = createSpotifyDirective(spotifyUrl);
+    if (!directive) {
+      setSpotifyStatus("Spotify 링크를 확인해주세요.");
+      return;
+    }
+
+    setDraft((current) => {
+      const content = current.content.trimEnd();
+      return {
+        ...current,
+        content: `${content}${content ? "\n\n" : ""}${directive}\n`,
+      };
+    });
+    setSpotifyUrl("");
+    setSpotifyStatus("");
+    setSpotifyPanelOpen(false);
+    setStatus("음악 블록을 추가했습니다.");
+  }
+
   if (!ready) return <section className="page-shell"><div className="empty-state">확인 중입니다.</div></section>;
   if (!authed) return null;
 
@@ -204,7 +228,34 @@ export default function AdminPage() {
             <ImagePlus size={16} /> 본문 이미지
             <input type="file" accept="image/*" onChange={(event) => uploadImage(event, "content")} />
           </label>
+          <button className="secondary-button" type="button" onClick={() => setSpotifyPanelOpen((open) => !open)}>
+            <Music size={16} /> 음악 추가
+          </button>
         </div>
+
+        {spotifyPanelOpen && (
+          <div className="spotify-insert-panel">
+            <input
+              aria-label="Spotify URL"
+              placeholder="https://open.spotify.com/track/..."
+              value={spotifyUrl}
+              onChange={(event) => {
+                setSpotifyUrl(event.target.value);
+                setSpotifyStatus("");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  insertSpotifyBlock();
+                }
+              }}
+            />
+            <button className="primary-button" type="button" onClick={insertSpotifyBlock}>
+              추가
+            </button>
+            {spotifyStatus && <p className="form-error">{spotifyStatus}</p>}
+          </div>
+        )}
 
         {draft.thumbnailUrl && <img className="thumb-preview" src={assetUrl(draft.thumbnailUrl)} alt="썸네일 미리보기" />}
 

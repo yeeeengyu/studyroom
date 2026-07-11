@@ -293,6 +293,17 @@ h2 {
   padding: 16px;
 }
 
+.spotify-embed {
+  border-radius: 8px;
+  margin: 24px 0;
+  overflow: hidden;
+}
+
+.spotify-embed iframe {
+  border: 0;
+  display: block;
+}
+
 .comments-section {
   border-top: 1px solid var(--line);
   display: grid;
@@ -493,6 +504,21 @@ textarea {
   color: #111;
 }
 
+.spotify-insert-panel {
+  align-items: start;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 12px;
+}
+
+.spotify-insert-panel .form-error {
+  grid-column: 1 / -1;
+}
+
 .compact-list {
   display: grid;
   gap: 10px;
@@ -597,6 +623,10 @@ textarea {
 
   .top-nav nav {
     gap: 2px;
+  }
+
+  .spotify-insert-panel {
+    grid-template-columns: 1fr;
   }
 }
 
