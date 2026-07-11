@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, ClipboardEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { FilePenLine, ImagePlus, Music, Sparkles, Trash2 } from "lucide-react";
 import { SpotifyMarkdownParagraph } from "@/components/SpotifyMarkdownParagraph";
 import { apiDelete, apiGet, apiPost, apiPut, assetUrl } from "@/lib/api";
@@ -118,12 +118,16 @@ export default function AdminPage() {
     await refresh();
   }
 
+  async function uploadImageFile(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    return apiPost<{ url: string }>("/api/uploads", form);
+  }
+
   async function uploadImage(event: ChangeEvent<HTMLInputElement>, mode: "thumbnail" | "content") {
     const file = event.target.files?.[0];
     if (!file) return;
-    const form = new FormData();
-    form.append("file", file);
-    const result = await apiPost<{ url: string }>("/api/uploads", form);
+    const result = await uploadImageFile(file);
     if (mode === "thumbnail") {
       setDraft((current) => ({ ...current, thumbnailUrl: result.url }));
     } else {
@@ -133,6 +137,39 @@ export default function AdminPage() {
       }));
     }
     event.target.value = "";
+  }
+
+  async function pasteImages(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const files = imagesFromClipboard(event.clipboardData);
+    if (files.length === 0) return;
+
+    event.preventDefault();
+    const selectionStart = event.currentTarget.selectionStart ?? draft.content.length;
+    const selectionEnd = event.currentTarget.selectionEnd ?? selectionStart;
+    setStatus("붙여넣은 이미지를 업로드하는 중입니다.");
+
+    try {
+      const markdownBlocks = await Promise.all(
+        files.map(async (file, index) => {
+          const result = await uploadImageFile(file);
+          const label = file.name || `clipboard-image-${index + 1}`;
+          return `![${label}](${result.url})`;
+        }),
+      );
+      const insertion = `\n\n${markdownBlocks.join("\n\n")}\n`;
+
+      setDraft((current) => {
+        const start = Math.min(selectionStart, current.content.length);
+        const end = Math.min(selectionEnd, current.content.length);
+        return {
+          ...current,
+          content: `${current.content.slice(0, start)}${insertion}${current.content.slice(end)}`,
+        };
+      });
+      setStatus(files.length > 1 ? `${files.length}개의 이미지를 추가했습니다.` : "붙여넣은 이미지를 추가했습니다.");
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "붙여넣은 이미지를 업로드하지 못했습니다.");
+    }
   }
 
   async function summarize() {
@@ -265,6 +302,9 @@ export default function AdminPage() {
             value={draft.content}
             onChange={(value) => setDraft({ ...draft, content: value || "" })}
             height={430}
+            textareaProps={{
+              onPaste: pasteImages,
+            }}
             previewOptions={{
               components: {
                 p: SpotifyMarkdownParagraph,
@@ -304,4 +344,14 @@ export default function AdminPage() {
       </aside>
     </section>
   );
+}
+
+function imagesFromClipboard(data: DataTransfer) {
+  const itemFiles = Array.from(data.items)
+    .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => Boolean(file));
+
+  if (itemFiles.length > 0) return itemFiles;
+  return Array.from(data.files).filter((file) => file.type.startsWith("image/"));
 }
