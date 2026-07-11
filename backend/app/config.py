@@ -44,6 +44,7 @@ class Settings:
 
     data_dir: Path = BASE_DIR / "data"
     posts_dir: Path = data_dir / "posts"
+    comments_dir: Path = data_dir / "comments"
     uploads_dir: Path = data_dir / "uploads"
     posts_index_path: Path = posts_dir / "index.json"
     categories_path: Path = data_dir / "categories.json"

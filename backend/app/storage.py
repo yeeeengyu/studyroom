@@ -29,6 +29,7 @@ def slugify(value: str) -> str:
 def ensure_data() -> None:
     settings = get_settings()
     settings.posts_dir.mkdir(parents=True, exist_ok=True)
+    settings.comments_dir.mkdir(parents=True, exist_ok=True)
     settings.uploads_dir.mkdir(parents=True, exist_ok=True)
     if not settings.posts_index_path.exists():
         write_json(settings.posts_index_path, [])
@@ -115,6 +116,48 @@ def post_body_path(slug: str) -> Path:
 def read_post_body(slug: str) -> str:
     path = post_body_path(slug)
     return path.read_text(encoding="utf-8") if path.exists() else ""
+
+
+def comments_path(slug: str) -> Path:
+    return get_settings().comments_dir / f"{slug}.json"
+
+
+def comments(slug: str) -> list[dict[str, Any]]:
+    if not post_by_slug(slug):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="글을 찾을 수 없습니다.")
+    items = read_json(comments_path(slug), [])
+    return sorted(items, key=lambda item: item.get("createdAt", ""))
+
+
+def create_comment(slug: str, payload: dict[str, Any]) -> dict[str, Any]:
+    with _LOCK:
+        if not post_by_slug(slug):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="글을 찾을 수 없습니다.")
+        timestamp = now_iso()
+        comment = {
+            "id": uuid.uuid4().hex,
+            "author": payload["author"].strip(),
+            "content": payload["content"].strip(),
+            "createdAt": timestamp,
+        }
+        if not comment["author"] or not comment["content"]:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="이름과 댓글을 입력해주세요.")
+        items = read_json(comments_path(slug), [])
+        items.append(comment)
+        write_json(comments_path(slug), items)
+        return comment
+
+
+def delete_comment(slug: str, comment_id: str) -> None:
+    with _LOCK:
+        if not post_by_slug(slug):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="글을 찾을 수 없습니다.")
+        path = comments_path(slug)
+        items = read_json(path, [])
+        remaining = [item for item in items if item["id"] != comment_id]
+        if len(remaining) == len(items):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="댓글을 찾을 수 없습니다.")
+        write_json(path, remaining)
 
 
 def create_category(name: str) -> dict[str, Any]:
@@ -225,6 +268,9 @@ def delete_post(slug: str) -> None:
         path = post_body_path(slug)
         if path.exists():
             path.unlink()
+        comment_path = comments_path(slug)
+        if comment_path.exists():
+            comment_path.unlink()
 
 
 def increment_view_count(slug: str) -> dict[str, Any]:

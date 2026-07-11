@@ -21,3 +21,10 @@ export type PostSummary = {
 export type PostDetail = PostSummary & {
   content: string;
 };
+
+export type Comment = {
+  id: string;
+  author: string;
+  content: string;
+  createdAt: string;
+};

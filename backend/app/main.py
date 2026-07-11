@@ -6,14 +6,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
-from app.schemas import CategoryCreate, CategoryUpdate, LoginRequest, PostCreate, PostUpdate, SummarizeRequest
+from app.schemas import CategoryCreate, CategoryUpdate, CommentCreate, LoginRequest, PostCreate, PostUpdate, SummarizeRequest
 from app.security import clear_session, issue_session, require_admin, verify_password
 from app.storage import (
     categories,
+    comments,
     category_by_slug,
     create_category,
+    create_comment,
     create_post,
     delete_category,
+    delete_comment,
     delete_post,
     ensure_data,
     increment_view_count,
@@ -104,6 +107,22 @@ def get_post(slug: str, track: bool = Query(default=True)) -> dict:
     post = increment_view_count(slug) if track else with_category(_require_post(slug))
     post["content"] = read_post_body(post["slug"])
     return post
+
+
+@app.get("/api/posts/{slug}/comments")
+def list_comments(slug: str) -> list[dict]:
+    return comments(slug)
+
+
+@app.post("/api/posts/{slug}/comments")
+def add_comment(slug: str, payload: CommentCreate) -> dict:
+    return create_comment(slug, payload.model_dump())
+
+
+@app.delete("/api/posts/{slug}/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_admin)])
+def remove_comment(slug: str, comment_id: str) -> Response:
+    delete_comment(slug, comment_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @app.post("/api/posts", dependencies=[Depends(require_admin)])

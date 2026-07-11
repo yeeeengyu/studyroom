@@ -25,6 +25,11 @@ class PostUpdate(PostCreate):
     pass
 
 
+class CommentCreate(BaseModel):
+    author: str = Field(min_length=1, max_length=40)
+    content: str = Field(min_length=1, max_length=1000)
+
+
 class SummarizeRequest(BaseModel):
     title: str = ""
     content: str
