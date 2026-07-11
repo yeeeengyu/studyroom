@@ -58,7 +58,7 @@ def login(payload: LoginRequest, response: Response) -> dict[str, str]:
 
 @app.post("/api/auth/logout")
 def logout(response: Response) -> dict[str, bool]:
-    clear_session(response)
+    clear_session(response, settings)
     return {"ok": True}
 
 

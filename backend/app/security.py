@@ -23,14 +23,14 @@ def hash_password(password: str, iterations: int = 260_000) -> str:
 
 def verify_password(password: str, stored_hash: str) -> bool:
     try:
-      algorithm, iterations, salt, expected = stored_hash.split("$", 3)
-      if algorithm != "pbkdf2_sha256":
-          return False
-      digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), int(iterations))
-      actual = base64.urlsafe_b64encode(digest).decode()
-      return hmac.compare_digest(actual, expected)
+        algorithm, iterations, salt, expected = stored_hash.split("$", 3)
+        if algorithm != "pbkdf2_sha256":
+            return False
+        digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), int(iterations))
+        actual = base64.urlsafe_b64encode(digest).decode()
+        return hmac.compare_digest(actual, expected)
     except (ValueError, TypeError):
-      return False
+        return False
 
 
 def _serializer(settings: Settings) -> URLSafeTimedSerializer:
@@ -44,13 +44,18 @@ def issue_session(response: Response, username: str, settings: Settings) -> None
         token,
         max_age=SESSION_MAX_AGE_SECONDS,
         httponly=True,
-        samesite="lax",
-        secure=False,
+        samesite=settings.cookie_samesite,
+        secure=settings.cookie_secure,
     )
 
 
-def clear_session(response: Response) -> None:
-    response.delete_cookie(SESSION_COOKIE)
+def clear_session(response: Response, settings: Settings) -> None:
+    response.delete_cookie(
+        SESSION_COOKIE,
+        httponly=True,
+        samesite=settings.cookie_samesite,
+        secure=settings.cookie_secure,
+    )
 
 
 def require_admin(request: Request, settings: Settings = Depends(get_settings)) -> str:

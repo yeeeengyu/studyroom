@@ -21,11 +21,23 @@ def _load_env_file() -> None:
 _load_env_file()
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
+
+
 class Settings:
     admin_username: str = os.getenv("ADMIN_USERNAME", "chldlsrb08")
     admin_password_hash: str = os.getenv("ADMIN_PASSWORD_HASH", "")
     session_secret: str = os.getenv("SESSION_SECRET", "dev-session-secret")
     frontend_origin: str = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
+    cookie_secure: bool = _env_bool("COOKIE_SECURE", frontend_origin.startswith("https://"))
+    cookie_samesite: str = os.getenv(
+        "COOKIE_SAMESITE",
+        "none" if frontend_origin.startswith("https://") else "lax",
+    ).lower()
     ai_provider: str = os.getenv("AI_PROVIDER", "")
     ai_model: str = os.getenv("AI_MODEL", "")
     ai_api_key: str = os.getenv("AI_API_KEY", "")
