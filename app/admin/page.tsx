@@ -307,6 +307,7 @@ export default function AdminPage() {
             }}
             previewOptions={{
               components: {
+                img: ({ src = "", alt = "" }) => <img src={assetUrl(String(src))} alt={String(alt)} />,
                 p: SpotifyMarkdownParagraph,
               },
             }}
