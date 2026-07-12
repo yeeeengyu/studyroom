@@ -23,6 +23,7 @@ from app.storage import (
     post_by_slug,
     posts,
     read_post_body,
+    recent_comments,
     update_category,
     update_post,
     with_category,
@@ -112,6 +113,11 @@ def get_post(slug: str, track: bool = Query(default=True)) -> dict:
 @app.get("/api/posts/{slug}/comments")
 def list_comments(slug: str) -> list[dict]:
     return comments(slug)
+
+
+@app.get("/api/admin/comments", dependencies=[Depends(require_admin)])
+def list_recent_comments(limit: int = Query(default=10, ge=1, le=50)) -> list[dict]:
+    return recent_comments(limit)
 
 
 @app.post("/api/posts/{slug}/comments")

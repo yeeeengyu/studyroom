@@ -1,12 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { ChangeEvent, ClipboardEvent, FormEvent, useEffect, useMemo, useState } from "react";
-import { FilePenLine, ImagePlus, Music, Sparkles, Trash2 } from "lucide-react";
+import { ExternalLink, FilePenLine, ImagePlus, MessageSquare, Music, Sparkles, Trash2 } from "lucide-react";
 import { SpotifyMarkdownParagraph } from "@/components/SpotifyMarkdownParagraph";
 import { apiDelete, apiGet, apiPost, apiPut, assetUrl } from "@/lib/api";
 import { createSpotifyDirective } from "@/lib/spotify";
-import type { Category, PostDetail, PostSummary } from "@/lib/types";
+import type { Category, PostDetail, PostSummary, RecentComment } from "@/lib/types";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
@@ -31,6 +32,7 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [posts, setPosts] = useState<PostSummary[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [recentComments, setRecentComments] = useState<RecentComment[]>([]);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [status, setStatus] = useState("");
@@ -58,12 +60,14 @@ export default function AdminPage() {
   }, [authed]);
 
   async function refresh() {
-    const [nextPosts, nextCategories] = await Promise.all([
+    const [nextPosts, nextCategories, nextComments] = await Promise.all([
       apiGet<PostSummary[]>("/api/posts"),
       apiGet<Category[]>("/api/categories"),
+      apiGet<RecentComment[]>("/api/admin/comments?limit=12"),
     ]);
     setPosts(nextPosts);
     setCategories(nextCategories);
+    setRecentComments(nextComments);
     setDraft((current) => ({
       ...current,
       categoryId: current.categoryId || nextCategories[0]?.id || "",
@@ -116,6 +120,13 @@ export default function AdminPage() {
       setDraft({ ...emptyDraft, categoryId: categories[0]?.id || "" });
     }
     await refresh();
+  }
+
+  async function deleteRecentComment(comment: RecentComment) {
+    if (!confirm("이 댓글을 삭제할까요?")) return;
+    await apiDelete(`/api/posts/${encodeURIComponent(comment.post.slug)}/comments/${comment.id}`);
+    setRecentComments((current) => current.filter((item) => item.id !== comment.id));
+    setStatus("댓글을 삭제했습니다.");
   }
 
   async function uploadImageFile(file: File) {
@@ -342,9 +353,45 @@ export default function AdminPage() {
           ))}
           {posts.length === 0 && <div className="empty-state compact">아직 글이 없습니다.</div>}
         </div>
+
+        <div className="side-divider" />
+
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Comments</p>
+            <h2><MessageSquare size={18} /> 최근 댓글</h2>
+          </div>
+        </div>
+        <div className="compact-list">
+          {recentComments.map((comment) => (
+            <div className="compact-item admin-comment-item" key={comment.id}>
+              <div className="admin-comment-copy">
+                <strong>{comment.author}</strong>
+                <span>{comment.post.title} · {formatDateTime(comment.createdAt)}</span>
+                <p>{comment.content}</p>
+              </div>
+              <div className="icon-actions">
+                <Link href={`/posts/${encodeURIComponent(comment.post.slug)}`} title="글 보기">
+                  <ExternalLink size={15} />
+                </Link>
+                <button type="button" title="삭제" onClick={() => deleteRecentComment(comment)}>
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            </div>
+          ))}
+          {recentComments.length === 0 && <div className="empty-state compact">아직 댓글이 없습니다.</div>}
+        </div>
       </aside>
     </section>
   );
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString("ko-KR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
 }
 
 function imagesFromClipboard(data: DataTransfer) {

@@ -129,6 +129,24 @@ def comments(slug: str) -> list[dict[str, Any]]:
     return sorted(items, key=lambda item: item.get("createdAt", ""))
 
 
+def recent_comments(limit: int = 10) -> list[dict[str, Any]]:
+    ensure_data()
+    items: list[dict[str, Any]] = []
+    for post in posts():
+        for comment in read_json(comments_path(post["slug"]), []):
+            items.append(
+                {
+                    **comment,
+                    "post": {
+                        "id": post["id"],
+                        "slug": post["slug"],
+                        "title": post["title"],
+                    },
+                }
+            )
+    return sorted(items, key=lambda item: item.get("createdAt", ""), reverse=True)[:limit]
+
+
 def create_comment(slug: str, payload: dict[str, Any]) -> dict[str, Any]:
     with _LOCK:
         if not post_by_slug(slug):

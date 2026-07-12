@@ -28,3 +28,11 @@ export type Comment = {
   content: string;
   createdAt: string;
 };
+
+export type RecentComment = Comment & {
+  post: {
+    id: string;
+    slug: string;
+    title: string;
+  };
+};

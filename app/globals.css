@@ -551,11 +551,43 @@ textarea {
   margin-top: 4px;
 }
 
+.side-panel h2 {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 0;
+}
+
+.side-divider {
+  border-top: 1px solid var(--line);
+}
+
+.admin-comment-item {
+  align-items: flex-start;
+}
+
+.admin-comment-copy {
+  min-width: 0;
+}
+
+.admin-comment-copy p {
+  color: var(--text);
+  display: -webkit-box;
+  font-size: 0.9rem;
+  line-height: 1.48;
+  margin: 8px 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: pre-wrap;
+}
+
 .icon-actions {
   display: flex;
   gap: 6px;
 }
 
+.icon-actions a,
 .icon-actions button {
   align-items: center;
   background: var(--surface);
@@ -563,6 +595,7 @@ textarea {
   border-radius: 7px;
   color: var(--muted);
   display: inline-flex;
+  justify-content: center;
   min-height: 34px;
   padding: 0 9px;
 }

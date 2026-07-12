@@ -78,6 +78,11 @@ def test_comments_can_be_created_and_admin_deleted():
     assert comments.status_code == 200
     assert comments.json()[0]["content"] == "좋은 글입니다."
 
+    recent_comments = client.get("/api/admin/comments")
+    assert recent_comments.status_code == 200
+    assert recent_comments.json()[0]["id"] == comment_id
+    assert recent_comments.json()[0]["post"]["slug"] == slug
+
     deleted_comment = client.delete(f"/api/posts/{slug}/comments/{comment_id}")
     assert deleted_comment.status_code == 204
     assert client.get(f"/api/posts/{slug}/comments").json() == []
