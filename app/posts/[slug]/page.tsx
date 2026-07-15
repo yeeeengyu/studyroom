@@ -99,7 +99,7 @@ export default function PostDetailPage() {
           <textarea
             value={commentContent}
             onChange={(event) => setCommentContent(event.target.value)}
-            placeholder="댓글을 남겨주세요."
+            placeholder="댓글을 남기면 최인규가 친절하게 답해드립니다"
             maxLength={1000}
             rows={4}
             required
