@@ -2,8 +2,9 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ChangeEvent, ClipboardEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, ClipboardEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, FilePenLine, ImagePlus, MessageSquare, Music, Sparkles, Trash2 } from "lucide-react";
+import { MarkdownImage } from "@/components/MarkdownImage";
 import { SpotifyMarkdownParagraph } from "@/components/SpotifyMarkdownParagraph";
 import { apiDelete, apiGet, apiPost, apiPut, assetUrl } from "@/lib/api";
 import { createSpotifyDirective } from "@/lib/spotify";
@@ -27,6 +28,15 @@ const emptyDraft: Draft = {
   content: "",
 };
 
+const DRAFT_STORAGE_KEY = "studyroom-admin-draft";
+
+type StoredDraft = {
+  version: 1;
+  editingSlug: string | null;
+  draft: Draft;
+  savedAt: string;
+};
+
 export default function AdminPage() {
   const [ready, setReady] = useState(false);
   const [authed, setAuthed] = useState(false);
@@ -35,10 +45,17 @@ export default function AdminPage() {
   const [recentComments, setRecentComments] = useState<RecentComment[]>([]);
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [draftSaveStatus, setDraftSaveStatus] = useState("");
   const [status, setStatus] = useState("");
   const [spotifyPanelOpen, setSpotifyPanelOpen] = useState(false);
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [spotifyStatus, setSpotifyStatus] = useState("");
+  const latestDraft = useRef(draft);
+  const latestEditingSlug = useRef(editingSlug);
+
+  latestDraft.current = draft;
+  latestEditingSlug.current = editingSlug;
 
   const selectedPostTitle = useMemo(
     () => posts.find((post) => post.slug === editingSlug)?.title,
@@ -58,6 +75,55 @@ export default function AdminPage() {
     if (!authed) return;
     refresh();
   }, [authed]);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as StoredDraft;
+        if (parsed.version === 1 && isDraft(parsed.draft)) {
+          setEditingSlug(typeof parsed.editingSlug === "string" ? parsed.editingSlug : null);
+          setDraft(parsed.draft);
+          setDraftSaveStatus(`임시 저장본을 복구했습니다. (${formatDraftTime(parsed.savedAt)})`);
+        }
+      }
+    } catch {
+      window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } finally {
+      setDraftRestored(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!draftRestored) return;
+
+    setDraftSaveStatus("임시 저장 중…");
+    const timer = window.setTimeout(() => {
+      const savedAt = saveDraftToBrowser(draft, editingSlug);
+      setDraftSaveStatus(savedAt ? `임시 저장됨 (${formatDraftTime(savedAt)})` : "");
+    }, 500);
+
+    return () => window.clearTimeout(timer);
+  }, [draft, editingSlug, draftRestored]);
+
+  useEffect(() => {
+    if (!draftRestored) return;
+
+    const saveLatestDraft = () => {
+      saveDraftToBrowser(latestDraft.current, latestEditingSlug.current);
+    };
+    const saveWhenHidden = () => {
+      if (document.visibilityState === "hidden") saveLatestDraft();
+    };
+
+    window.addEventListener("pagehide", saveLatestDraft);
+    document.addEventListener("visibilitychange", saveWhenHidden);
+    return () => {
+      saveLatestDraft();
+      window.removeEventListener("pagehide", saveLatestDraft);
+      document.removeEventListener("visibilitychange", saveWhenHidden);
+    };
+  }, [draftRestored]);
 
   async function refresh() {
     const [nextPosts, nextCategories, nextComments] = await Promise.all([
@@ -91,6 +157,7 @@ export default function AdminPage() {
         await apiPost("/api/posts", payload);
       }
       setStatus("저장되었습니다.");
+      clearBrowserDraft();
       setEditingSlug(null);
       setDraft({ ...emptyDraft, categoryId: categories[0]?.id || "" });
       await refresh();
@@ -229,8 +296,10 @@ export default function AdminPage() {
               className="ghost-button"
               type="button"
               onClick={() => {
+                clearBrowserDraft();
                 setEditingSlug(null);
                 setDraft({ ...emptyDraft, categoryId: categories[0]?.id || "" });
+                setDraftSaveStatus("");
               }}
             >
               새 글
@@ -318,7 +387,7 @@ export default function AdminPage() {
             }}
             previewOptions={{
               components: {
-                img: ({ src = "", alt = "" }) => <img src={assetUrl(String(src))} alt={String(alt)} />,
+                img: MarkdownImage,
                 p: SpotifyMarkdownParagraph,
               },
             }}
@@ -326,6 +395,7 @@ export default function AdminPage() {
         </div>
 
         {status && <p className="form-status">{status}</p>}
+        {draftSaveStatus && <p className="form-status">{draftSaveStatus}</p>}
         <button className="primary-button" type="submit">
           <FilePenLine size={16} /> {editingSlug ? "수정 저장" : "글 발행"}
         </button>
@@ -402,4 +472,50 @@ function imagesFromClipboard(data: DataTransfer) {
 
   if (itemFiles.length > 0) return itemFiles;
   return Array.from(data.files).filter((file) => file.type.startsWith("image/"));
+}
+
+function saveDraftToBrowser(draft: Draft, editingSlug: string | null) {
+  if (!hasDraftContent(draft)) {
+    clearBrowserDraft();
+    return null;
+  }
+
+  const savedAt = new Date().toISOString();
+  const stored: StoredDraft = {
+    version: 1,
+    editingSlug,
+    draft,
+    savedAt,
+  };
+  window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(stored));
+  return savedAt;
+}
+
+function clearBrowserDraft() {
+  window.localStorage.removeItem(DRAFT_STORAGE_KEY);
+}
+
+function hasDraftContent(draft: Draft) {
+  return Boolean(
+    draft.title.trim()
+    || draft.thumbnailUrl.trim()
+    || draft.summary.trim()
+    || draft.content.trim(),
+  );
+}
+
+function isDraft(value: unknown): value is Draft {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<keyof Draft, unknown>;
+  return typeof candidate.title === "string"
+    && typeof candidate.categoryId === "string"
+    && typeof candidate.thumbnailUrl === "string"
+    && typeof candidate.summary === "string"
+    && typeof candidate.content === "string";
+}
+
+function formatDraftTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "방금 전";
+  return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 }
