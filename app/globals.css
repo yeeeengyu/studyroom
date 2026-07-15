@@ -629,6 +629,40 @@ textarea {
   color: var(--accent-strong);
 }
 
+.admin-toast {
+  animation: admin-toast-in 180ms ease-out;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  bottom: 72px;
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 700;
+  max-width: min(360px, calc(100vw - 36px));
+  overflow-wrap: anywhere;
+  padding: 13px 16px;
+  position: fixed;
+  right: 18px;
+  z-index: 40;
+}
+
+.admin-toast.error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+@keyframes admin-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .theme-toggle {
   align-items: center;
   background: var(--surface);

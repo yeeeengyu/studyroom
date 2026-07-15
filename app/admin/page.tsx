@@ -37,6 +37,12 @@ type StoredDraft = {
   savedAt: string;
 };
 
+type Toast = {
+  id: number;
+  message: string;
+  tone: "info" | "error";
+};
+
 export default function AdminPage() {
   const [ready, setReady] = useState(false);
   const [authed, setAuthed] = useState(false);
@@ -47,12 +53,13 @@ export default function AdminPage() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [draftRestored, setDraftRestored] = useState(false);
   const [draftSaveStatus, setDraftSaveStatus] = useState("");
-  const [status, setStatus] = useState("");
+  const [toast, setToast] = useState<Toast | null>(null);
   const [spotifyPanelOpen, setSpotifyPanelOpen] = useState(false);
   const [spotifyUrl, setSpotifyUrl] = useState("");
   const [spotifyStatus, setSpotifyStatus] = useState("");
   const latestDraft = useRef(draft);
   const latestEditingSlug = useRef(editingSlug);
+  const nextToastId = useRef(0);
 
   latestDraft.current = draft;
   latestEditingSlug.current = editingSlug;
@@ -125,6 +132,19 @@ export default function AdminPage() {
     };
   }, [draftRestored]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => {
+      setToast((current) => current?.id === toast.id ? null : current);
+    }, toast.tone === "error" ? 5000 : 3000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  function showToast(message: string, tone: Toast["tone"] = "info") {
+    nextToastId.current += 1;
+    setToast({ id: nextToastId.current, message, tone });
+  }
+
   async function refresh() {
     const [nextPosts, nextCategories, nextComments] = await Promise.all([
       apiGet<PostSummary[]>("/api/posts"),
@@ -142,7 +162,7 @@ export default function AdminPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStatus("저장 중입니다.");
+    showToast("저장 중입니다.");
     const payload = {
       title: draft.title,
       categoryId: draft.categoryId,
@@ -156,44 +176,57 @@ export default function AdminPage() {
       } else {
         await apiPost("/api/posts", payload);
       }
-      setStatus("저장되었습니다.");
+      showToast("저장되었습니다.");
       clearBrowserDraft();
       setEditingSlug(null);
       setDraft({ ...emptyDraft, categoryId: categories[0]?.id || "" });
       await refresh();
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "저장하지 못했습니다.");
+      showToast(error instanceof Error ? error.message : "저장하지 못했습니다.", "error");
     }
   }
 
   async function editPost(slug: string) {
-    const post = await apiGet<PostDetail>(`/api/posts/${encodeURIComponent(slug)}?track=false`);
-    setEditingSlug(slug);
-    setDraft({
-      title: post.title,
-      categoryId: post.category.id,
-      thumbnailUrl: post.thumbnailUrl || "",
-      summary: post.summary || "",
-      content: post.content,
-    });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    try {
+      const post = await apiGet<PostDetail>(`/api/posts/${encodeURIComponent(slug)}?track=false`);
+      setEditingSlug(slug);
+      setDraft({
+        title: post.title,
+        categoryId: post.category.id,
+        thumbnailUrl: post.thumbnailUrl || "",
+        summary: post.summary || "",
+        content: post.content,
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "글을 불러오지 못했습니다.", "error");
+    }
   }
 
   async function deletePost(slug: string) {
     if (!confirm("이 글을 삭제할까요?")) return;
-    await apiDelete(`/api/posts/${encodeURIComponent(slug)}`);
-    if (editingSlug === slug) {
-      setEditingSlug(null);
-      setDraft({ ...emptyDraft, categoryId: categories[0]?.id || "" });
+    try {
+      await apiDelete(`/api/posts/${encodeURIComponent(slug)}`);
+      if (editingSlug === slug) {
+        setEditingSlug(null);
+        setDraft({ ...emptyDraft, categoryId: categories[0]?.id || "" });
+      }
+      await refresh();
+      showToast("글을 삭제했습니다.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "글을 삭제하지 못했습니다.", "error");
     }
-    await refresh();
   }
 
   async function deleteRecentComment(comment: RecentComment) {
     if (!confirm("이 댓글을 삭제할까요?")) return;
-    await apiDelete(`/api/posts/${encodeURIComponent(comment.post.slug)}/comments/${comment.id}`);
-    setRecentComments((current) => current.filter((item) => item.id !== comment.id));
-    setStatus("댓글을 삭제했습니다.");
+    try {
+      await apiDelete(`/api/posts/${encodeURIComponent(comment.post.slug)}/comments/${comment.id}`);
+      setRecentComments((current) => current.filter((item) => item.id !== comment.id));
+      showToast("댓글을 삭제했습니다.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "댓글을 삭제하지 못했습니다.", "error");
+    }
   }
 
   async function uploadImageFile(file: File) {
@@ -205,16 +238,23 @@ export default function AdminPage() {
   async function uploadImage(event: ChangeEvent<HTMLInputElement>, mode: "thumbnail" | "content") {
     const file = event.target.files?.[0];
     if (!file) return;
-    const result = await uploadImageFile(file);
-    if (mode === "thumbnail") {
-      setDraft((current) => ({ ...current, thumbnailUrl: result.url }));
-    } else {
-      setDraft((current) => ({
-        ...current,
-        content: `${current.content}\n\n![${file.name}](${result.url})\n`,
-      }));
+    showToast("이미지를 업로드하는 중입니다.");
+    try {
+      const result = await uploadImageFile(file);
+      if (mode === "thumbnail") {
+        setDraft((current) => ({ ...current, thumbnailUrl: result.url }));
+      } else {
+        setDraft((current) => ({
+          ...current,
+          content: `${current.content}\n\n![${file.name}](${result.url})\n`,
+        }));
+      }
+      showToast(mode === "thumbnail" ? "썸네일을 추가했습니다." : "본문 이미지를 추가했습니다.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "이미지를 업로드하지 못했습니다.", "error");
+    } finally {
+      event.target.value = "";
     }
-    event.target.value = "";
   }
 
   async function pasteImages(event: ClipboardEvent<HTMLTextAreaElement>) {
@@ -224,7 +264,7 @@ export default function AdminPage() {
     event.preventDefault();
     const selectionStart = event.currentTarget.selectionStart ?? draft.content.length;
     const selectionEnd = event.currentTarget.selectionEnd ?? selectionStart;
-    setStatus("붙여넣은 이미지를 업로드하는 중입니다.");
+    showToast("붙여넣은 이미지를 업로드하는 중입니다.");
 
     try {
       const markdownBlocks = await Promise.all(
@@ -244,20 +284,24 @@ export default function AdminPage() {
           content: `${current.content.slice(0, start)}${insertion}${current.content.slice(end)}`,
         };
       });
-      setStatus(files.length > 1 ? `${files.length}개의 이미지를 추가했습니다.` : "붙여넣은 이미지를 추가했습니다.");
+      showToast(files.length > 1 ? `${files.length}개의 이미지를 추가했습니다.` : "붙여넣은 이미지를 추가했습니다.");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "붙여넣은 이미지를 업로드하지 못했습니다.");
+      showToast(error instanceof Error ? error.message : "붙여넣은 이미지를 업로드하지 못했습니다.", "error");
     }
   }
 
   async function summarize() {
-    setStatus("요약을 생성하는 중입니다.");
-    const result = await apiPost<{ summary: string }>("/api/ai/summarize", {
-      title: draft.title,
-      content: draft.content,
-    });
-    setDraft((current) => ({ ...current, summary: result.summary }));
-    setStatus("요약이 생성되었습니다.");
+    showToast("요약을 생성하는 중입니다.");
+    try {
+      const result = await apiPost<{ summary: string }>("/api/ai/summarize", {
+        title: draft.title,
+        content: draft.content,
+      });
+      setDraft((current) => ({ ...current, summary: result.summary }));
+      showToast("요약이 생성되었습니다.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "요약을 생성하지 못했습니다.", "error");
+    }
   }
 
   function insertSpotifyBlock() {
@@ -277,7 +321,7 @@ export default function AdminPage() {
     setSpotifyUrl("");
     setSpotifyStatus("");
     setSpotifyPanelOpen(false);
-    setStatus("음악 블록을 추가했습니다.");
+    showToast("음악 블록을 추가했습니다.");
   }
 
   if (!ready) return <section className="page-shell"><div className="empty-state">확인 중입니다.</div></section>;
@@ -394,7 +438,6 @@ export default function AdminPage() {
           />
         </div>
 
-        {status && <p className="form-status">{status}</p>}
         {draftSaveStatus && <p className="form-status">{draftSaveStatus}</p>}
         <button className="primary-button" type="submit">
           <FilePenLine size={16} /> {editingSlug ? "수정 저장" : "글 발행"}
@@ -453,6 +496,16 @@ export default function AdminPage() {
           {recentComments.length === 0 && <div className="empty-state compact">아직 댓글이 없습니다.</div>}
         </div>
       </aside>
+
+      {toast && (
+        <div
+          className={`admin-toast ${toast.tone === "error" ? "error" : ""}`}
+          role={toast.tone === "error" ? "alert" : "status"}
+          aria-live={toast.tone === "error" ? "assertive" : "polite"}
+        >
+          {toast.message}
+        </div>
+      )}
     </section>
   );
 }
