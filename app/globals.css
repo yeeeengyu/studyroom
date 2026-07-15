@@ -286,6 +286,13 @@ h2 {
   max-width: 100%;
 }
 
+.markdown-image {
+  border-radius: 8px;
+  display: block;
+  height: auto;
+  max-width: 100%;
+}
+
 .markdown-body pre {
   background: var(--surface-2);
   border-radius: 8px;

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Eye, MessageSquare, Trash2 } from "lucide-react";
+import { MarkdownImage } from "@/components/MarkdownImage";
 import { SpotifyMarkdownParagraph } from "@/components/SpotifyMarkdownParagraph";
 import { apiDelete, apiGet, apiPost, assetUrl } from "@/lib/api";
 import type { Comment, PostDetail } from "@/lib/types";
@@ -76,7 +77,7 @@ export default function PostDetailPage() {
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
-            img: ({ src = "", alt = "" }) => <img src={assetUrl(String(src))} alt={String(alt)} />,
+            img: MarkdownImage,
             p: SpotifyMarkdownParagraph,
           }}
         >

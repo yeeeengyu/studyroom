@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ChangeEvent, ClipboardEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { ExternalLink, FilePenLine, ImagePlus, MessageSquare, Music, Sparkles, Trash2 } from "lucide-react";
+import { MarkdownImage } from "@/components/MarkdownImage";
 import { SpotifyMarkdownParagraph } from "@/components/SpotifyMarkdownParagraph";
 import { apiDelete, apiGet, apiPost, apiPut, assetUrl } from "@/lib/api";
 import { createSpotifyDirective } from "@/lib/spotify";
@@ -318,7 +319,7 @@ export default function AdminPage() {
             }}
             previewOptions={{
               components: {
-                img: ({ src = "", alt = "" }) => <img src={assetUrl(String(src))} alt={String(alt)} />,
+                img: MarkdownImage,
                 p: SpotifyMarkdownParagraph,
               },
             }}
