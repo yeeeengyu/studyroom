@@ -1,11 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Eye, MessageSquare, Trash2 } from "lucide-react";
+import { Eye, MessageSquare, Reply, Trash2 } from "lucide-react";
 import { MarkdownImage } from "@/components/MarkdownImage";
 import { SpotifyMarkdownParagraph } from "@/components/SpotifyMarkdownParagraph";
 import { apiDelete, apiGet, apiPost, assetUrl } from "@/lib/api";
@@ -19,9 +19,22 @@ export default function PostDetailPage() {
   const [commentAuthor, setCommentAuthor] = useState("");
   const [commentContent, setCommentContent] = useState("");
   const [commentStatus, setCommentStatus] = useState("");
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyAuthor, setReplyAuthor] = useState("");
+  const [replyContent, setReplyContent] = useState("");
+  const [replyStatus, setReplyStatus] = useState("");
   const [authed, setAuthed] = useState(false);
   const [error, setError] = useState("");
   const slug = params.slug ? decodeURIComponent(params.slug) : "";
+
+  const rootComments = useMemo(() => comments.filter((comment) => !comment.parentId), [comments]);
+  const repliesByParent = useMemo(() => {
+    return comments.reduce<Record<string, Comment[]>>((groups, comment) => {
+      if (!comment.parentId) return groups;
+      groups[comment.parentId] = [...(groups[comment.parentId] || []), comment];
+      return groups;
+    }, {});
+  }, [comments]);
 
   useEffect(() => {
     if (!slug) return;
@@ -57,10 +70,30 @@ export default function PostDetailPage() {
     }
   }
 
+  async function submitReply(event: FormEvent<HTMLFormElement>, parentId: string) {
+    event.preventDefault();
+    if (!slug) return;
+    setReplyStatus("답글을 저장하는 중입니다.");
+    try {
+      const next = await apiPost<Comment>(`/api/posts/${encodeURIComponent(slug)}/comments`, {
+        author: replyAuthor,
+        content: replyContent,
+        parentId,
+      });
+      setComments((current) => [...current, next]);
+      setReplyingTo(null);
+      setReplyAuthor("");
+      setReplyContent("");
+      setReplyStatus("");
+    } catch (replyError) {
+      setReplyStatus(replyError instanceof Error ? replyError.message : "답글을 등록하지 못했습니다.");
+    }
+  }
+
   async function removeComment(commentId: string) {
     if (!slug || !confirm("이 댓글을 삭제할까요?")) return;
     await apiDelete(`/api/posts/${encodeURIComponent(slug)}/comments/${commentId}`);
-    setComments((current) => current.filter((comment) => comment.id !== commentId));
+    setComments((current) => current.filter((comment) => comment.id !== commentId && comment.parentId !== commentId));
   }
 
   if (error) return <section className="page-shell"><div className="empty-state">{error}</div></section>;
@@ -112,21 +145,67 @@ export default function PostDetailPage() {
           {commentStatus && <p className="form-status">{commentStatus}</p>}
         </form>
         <div className="comment-list">
-          {comments.map((comment) => (
-            <div className="comment-item" key={comment.id}>
-              <div className="comment-meta">
-                <strong>{comment.author}</strong>
-                <span>{new Date(comment.createdAt).toLocaleString("ko-KR")}</span>
-                {authed && (
-                  <button type="button" title="댓글 삭제" onClick={() => removeComment(comment.id)}>
-                    <Trash2 size={15} />
+          {rootComments.map((comment) => (
+            <div className="comment-thread" key={comment.id}>
+              <div className="comment-item">
+                <div className="comment-meta">
+                  <strong>{comment.author}</strong>
+                  <span>{new Date(comment.createdAt).toLocaleString("ko-KR")}</span>
+                  <button className="reply-button" type="button" onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}>
+                    <Reply size={14} /> 답글
                   </button>
-                )}
+                  {authed && (
+                    <button className="danger-button" type="button" title="댓글 삭제" onClick={() => removeComment(comment.id)}>
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
+                <p>{comment.content}</p>
               </div>
-              <p>{comment.content}</p>
+              {replyingTo === comment.id && (
+                <form className="comment-form reply-form" onSubmit={(event) => submitReply(event, comment.id)}>
+                  <input
+                    value={replyAuthor}
+                    onChange={(event) => setReplyAuthor(event.target.value)}
+                    placeholder="이름 (비워둘 시 익명으로 처리됩니다)"
+                    maxLength={40}
+                  />
+                  <textarea
+                    value={replyContent}
+                    onChange={(event) => setReplyContent(event.target.value)}
+                    placeholder="답글을 남겨주세요"
+                    maxLength={1000}
+                    rows={3}
+                    required
+                  />
+                  <div className="reply-form-actions">
+                    <button className="secondary-button" type="button" onClick={() => setReplyingTo(null)}>취소</button>
+                    <button className="primary-button" type="submit">답글 등록</button>
+                  </div>
+                  {replyStatus && <p className="form-status">{replyStatus}</p>}
+                </form>
+              )}
+              {(repliesByParent[comment.id] || []).length > 0 && (
+                <div className="reply-list">
+                  {repliesByParent[comment.id].map((reply) => (
+                    <div className="comment-item reply-item" key={reply.id}>
+                      <div className="comment-meta">
+                        <strong>{reply.author}</strong>
+                        <span>{new Date(reply.createdAt).toLocaleString("ko-KR")}</span>
+                        {authed && (
+                          <button className="danger-button" type="button" title="답글 삭제" onClick={() => removeComment(reply.id)}>
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </div>
+                      <p>{reply.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
-          {comments.length === 0 && <div className="empty-state compact">아직 댓글이 없습니다.</div>}
+          {rootComments.length === 0 && <div className="empty-state compact">아직 댓글이 없습니다.</div>}
         </div>
       </section>
       {recentPosts.length > 0 && (

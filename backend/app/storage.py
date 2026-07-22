@@ -152,15 +152,19 @@ def create_comment(slug: str, payload: dict[str, Any]) -> dict[str, Any]:
         if not post_by_slug(slug):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="글을 찾을 수 없습니다.")
         timestamp = now_iso()
+        items = read_json(comments_path(slug), [])
+        parent_id = payload.get("parentId", "").strip()
+        if parent_id and not any(item["id"] == parent_id for item in items):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="원 댓글을 찾을 수 없습니다.")
         comment = {
             "id": uuid.uuid4().hex,
             "author": payload.get("author", "").strip() or "익명",
             "content": payload["content"].strip(),
+            "parentId": parent_id,
             "createdAt": timestamp,
         }
         if not comment["content"]:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="댓글을 입력해주세요.")
-        items = read_json(comments_path(slug), [])
         items.append(comment)
         write_json(comments_path(slug), items)
         return comment
@@ -172,7 +176,7 @@ def delete_comment(slug: str, comment_id: str) -> None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="글을 찾을 수 없습니다.")
         path = comments_path(slug)
         items = read_json(path, [])
-        remaining = [item for item in items if item["id"] != comment_id]
+        remaining = [item for item in items if item["id"] != comment_id and item.get("parentId") != comment_id]
         if len(remaining) == len(items):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="댓글을 찾을 수 없습니다.")
         write_json(path, remaining)
