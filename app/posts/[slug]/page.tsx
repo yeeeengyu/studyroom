@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -8,11 +9,12 @@ import { Eye, MessageSquare, Trash2 } from "lucide-react";
 import { MarkdownImage } from "@/components/MarkdownImage";
 import { SpotifyMarkdownParagraph } from "@/components/SpotifyMarkdownParagraph";
 import { apiDelete, apiGet, apiPost, assetUrl } from "@/lib/api";
-import type { Comment, PostDetail } from "@/lib/types";
+import type { Comment, PostDetail, PostSummary } from "@/lib/types";
 
 export default function PostDetailPage() {
   const params = useParams<{ slug: string }>();
   const [post, setPost] = useState<PostDetail | null>(null);
+  const [recentPosts, setRecentPosts] = useState<PostSummary[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentAuthor, setCommentAuthor] = useState("");
   const [commentContent, setCommentContent] = useState("");
@@ -28,6 +30,9 @@ export default function PostDetailPage() {
       .catch(() => setError("글을 불러오지 못했습니다."));
     apiGet<Comment[]>(`/api/posts/${encodeURIComponent(slug)}/comments`)
       .then(setComments)
+      .catch(console.error);
+    apiGet<PostSummary[]>("/api/posts")
+      .then((items) => setRecentPosts(items.filter((item) => item.slug !== slug).slice(0, 3)))
       .catch(console.error);
     apiGet("/api/auth/me")
       .then(() => setAuthed(true))
@@ -124,6 +129,31 @@ export default function PostDetailPage() {
           {comments.length === 0 && <div className="empty-state compact">아직 댓글이 없습니다.</div>}
         </div>
       </section>
+      {recentPosts.length > 0 && (
+        <section className="recent-posts-section">
+          <div className="section-title">
+            <h2>최근 글</h2>
+          </div>
+          <div className="recent-post-list">
+            {recentPosts.map((recentPost) => (
+              <Link className="recent-post-card" href={`/posts/${encodeURIComponent(recentPost.slug)}`} key={recentPost.id}>
+                <div className="recent-post-copy">
+                  <div className="post-card-meta">
+                    <span>{recentPost.category.name}</span>
+                    <span>{new Date(recentPost.createdAt).toLocaleDateString("ko-KR")}</span>
+                    <span className="with-icon"><Eye size={14} /> {recentPost.viewCount}</span>
+                  </div>
+                  <h3>{recentPost.title}</h3>
+                  <p>{recentPost.summary || "요약이 아직 없습니다."}</p>
+                </div>
+                <div className="recent-post-thumb" aria-hidden="true">
+                  {recentPost.thumbnailUrl ? <img src={assetUrl(recentPost.thumbnailUrl)} alt="" /> : <span>{recentPost.category.name}</span>}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </article>
   );
 }

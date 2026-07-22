@@ -440,6 +440,79 @@ h2 {
   white-space: pre-wrap;
 }
 
+.recent-posts-section {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 14px;
+  margin-top: 34px;
+  padding-top: 26px;
+}
+
+.recent-posts-section .section-title {
+  margin-bottom: 0;
+}
+
+.recent-post-list {
+  display: grid;
+  gap: 10px;
+}
+
+.recent-post-card {
+  align-items: stretch;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  min-height: 118px;
+  padding: 14px;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.recent-post-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.recent-post-copy {
+  min-width: 0;
+}
+
+.recent-post-card h3 {
+  font-size: 1rem;
+  line-height: 1.35;
+  margin-bottom: 6px;
+}
+
+.recent-post-card p {
+  color: var(--muted);
+  line-height: 1.55;
+  margin-bottom: 0;
+}
+
+.recent-post-thumb {
+  align-items: center;
+  aspect-ratio: 4 / 3;
+  background: var(--surface-2);
+  border-radius: 7px;
+  color: var(--muted);
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 800;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  text-align: center;
+}
+
+.recent-post-thumb img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
 .auth-shell {
   display: grid;
   min-height: calc(100vh - 64px);
@@ -750,6 +823,10 @@ textarea {
     grid-template-columns: minmax(0, 1fr) 118px;
   }
 
+  .recent-post-card {
+    grid-template-columns: minmax(0, 1fr) 96px;
+  }
+
   .top-nav {
     padding: 0 14px;
   }
@@ -768,7 +845,12 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .thumb {
+  .recent-post-card {
+    grid-template-columns: 1fr;
+  }
+
+  .thumb,
+  .recent-post-thumb {
     aspect-ratio: 16 / 9;
   }
 
