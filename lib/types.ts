@@ -26,6 +26,7 @@ export type Comment = {
   id: string;
   author: string;
   content: string;
+  parentId?: string;
   createdAt: string;
 };
 

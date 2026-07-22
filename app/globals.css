@@ -400,6 +400,11 @@ h2 {
 
 .comment-list {
   display: grid;
+  gap: 14px;
+}
+
+.comment-thread {
+  display: grid;
   gap: 10px;
 }
 
@@ -428,16 +433,52 @@ h2 {
   align-items: center;
   background: transparent;
   border: 0;
-  color: var(--danger);
+  color: var(--muted);
   display: inline-flex;
+  gap: 4px;
   min-height: 28px;
   padding: 0 4px;
+}
+
+.comment-meta button:hover,
+.comment-meta .reply-button {
+  color: var(--accent);
+}
+
+.comment-meta .danger-button {
+  color: var(--danger);
 }
 
 .comment-item p {
   line-height: 1.7;
   margin-bottom: 0;
   white-space: pre-wrap;
+}
+
+.reply-form,
+.reply-list {
+  margin-left: 28px;
+}
+
+.reply-form {
+  background: color-mix(in srgb, var(--surface-2) 45%, var(--surface));
+}
+
+.reply-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.reply-item {
+  background: color-mix(in srgb, var(--surface-2) 45%, var(--surface));
+}
+
+.reply-list {
+  border-left: 2px solid var(--line);
+  display: grid;
+  gap: 10px;
+  padding-left: 14px;
 }
 
 .recent-posts-section {
@@ -847,6 +888,11 @@ textarea {
 
   .recent-post-card {
     grid-template-columns: 1fr;
+  }
+
+  .reply-form,
+  .reply-list {
+    margin-left: 12px;
   }
 
   .thumb,

@@ -116,3 +116,45 @@ def test_comment_without_author_uses_anonymous_name():
 
     deleted_post = client.delete(f"/api/posts/{slug}")
     assert deleted_post.status_code == 204
+
+
+def test_replies_can_be_created_and_deleted_with_parent_comment():
+    login()
+    category = client.get("/api/categories").json()[0]
+    created = client.post(
+        "/api/posts",
+        json={
+            "title": "대댓글 테스트 글",
+            "categoryId": category["id"],
+            "summary": "",
+            "thumbnailUrl": "",
+            "content": "대댓글 테스트",
+        },
+    )
+    assert created.status_code == 200
+    slug = created.json()["slug"]
+
+    parent = client.post(
+        f"/api/posts/{slug}/comments",
+        json={"author": "방문자", "content": "원 댓글입니다."},
+    )
+    assert parent.status_code == 200
+    parent_id = parent.json()["id"]
+
+    reply = client.post(
+        f"/api/posts/{slug}/comments",
+        json={"author": "", "content": "답글입니다.", "parentId": parent_id},
+    )
+    assert reply.status_code == 200
+    assert reply.json()["author"] == "익명"
+    assert reply.json()["parentId"] == parent_id
+
+    comments = client.get(f"/api/posts/{slug}/comments").json()
+    assert len(comments) == 2
+
+    deleted_parent = client.delete(f"/api/posts/{slug}/comments/{parent_id}")
+    assert deleted_parent.status_code == 204
+    assert client.get(f"/api/posts/{slug}/comments").json() == []
+
+    deleted_post = client.delete(f"/api/posts/{slug}")
+    assert deleted_post.status_code == 204
