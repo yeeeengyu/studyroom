@@ -154,12 +154,12 @@ def create_comment(slug: str, payload: dict[str, Any]) -> dict[str, Any]:
         timestamp = now_iso()
         comment = {
             "id": uuid.uuid4().hex,
-            "author": payload["author"].strip(),
+            "author": payload.get("author", "").strip() or "익명",
             "content": payload["content"].strip(),
             "createdAt": timestamp,
         }
-        if not comment["author"] or not comment["content"]:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="이름과 댓글을 입력해주세요.")
+        if not comment["content"]:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="댓글을 입력해주세요.")
         items = read_json(comments_path(slug), [])
         items.append(comment)
         write_json(comments_path(slug), items)

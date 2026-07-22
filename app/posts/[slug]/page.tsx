@@ -92,9 +92,8 @@ export default function PostDetailPage() {
           <input
             value={commentAuthor}
             onChange={(event) => setCommentAuthor(event.target.value)}
-            placeholder="이름"
+            placeholder="이름 (비워둘 시 익명으로 처리됩니다)"
             maxLength={40}
-            required
           />
           <textarea
             value={commentContent}

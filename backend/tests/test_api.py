@@ -89,3 +89,30 @@ def test_comments_can_be_created_and_admin_deleted():
 
     deleted_post = client.delete(f"/api/posts/{slug}")
     assert deleted_post.status_code == 204
+
+
+def test_comment_without_author_uses_anonymous_name():
+    login()
+    category = client.get("/api/categories").json()[0]
+    created = client.post(
+        "/api/posts",
+        json={
+            "title": "익명 댓글 테스트 글",
+            "categoryId": category["id"],
+            "summary": "",
+            "thumbnailUrl": "",
+            "content": "익명 댓글 테스트",
+        },
+    )
+    assert created.status_code == 200
+    slug = created.json()["slug"]
+
+    comment = client.post(
+        f"/api/posts/{slug}/comments",
+        json={"author": "   ", "content": "이름 없이 남겨요."},
+    )
+    assert comment.status_code == 200
+    assert comment.json()["author"] == "익명"
+
+    deleted_post = client.delete(f"/api/posts/{slug}")
+    assert deleted_post.status_code == 204
